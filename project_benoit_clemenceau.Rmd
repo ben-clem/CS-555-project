@@ -1,0 +1,648 @@
+---
+title: "project_benoit_clemenceau"
+output: html_document
+---
+
+```{r}
+if (!require(dplyr)) {
+  install.packages("dplyr")
+  library(dplyr)
+}
+if (!require(ggplot2)) {
+  install.packages("ggplot2")
+  library(ggplot2)
+}
+if (!require(tidyverse)) {
+  install.packages("tidyverse")
+  library(tidyverse)
+}
+if (!require(broom)) {
+  install.packages("broom")
+  library(broom)
+}
+if (!require(GGally)) {
+  install.packages("GGally")
+  library(GGally)
+}
+if (!require(aod)) {
+  install.packages("aod")
+  library(aod)
+}
+if (!require(pROC)) {
+  install.packages("pROC")
+  library(pROC)
+}
+```
+
+```{r}
+titanic = read.csv(file = "titanic/train.csv")
+head(titanic)
+summary(titanic)
+nrow(titanic)
+```
+
+We have 12 columns in this data set that we will describe one by one.  
+We also have 891 rows which is more than the 500 observations recommended in the project instructions. We will see how many rows we have left after cleaning up the data.
+
+# Data set description
+
+## PassengerId
+
+```{r}
+print("PassengerId")
+head(titanic$PassengerId)
+paste("Type:", class(titanic$PassengerId))
+paste("Distincts:", n_distinct(titanic$PassengerId))
+paste("NAs:", sum(is.na(titanic$PassengerId) == TRUE))
+# table(titanic$PassengerId)
+summary(titanic$PassengerId)
+```
+
+PassengerId is only an index for the rows.  
+It will probably not be helpful for the regression, but we should keep it for context.
+
+## Survived
+
+```{r}
+print("Survived")
+head(titanic$Survived)
+paste("Type:", class(titanic$Survived))
+paste("Distincts:", n_distinct(titanic$Survived))
+paste("NAs:", sum(is.na(titanic$Survived) == TRUE))
+table(titanic$Survived)
+summary(titanic$Survived)
+```
+
+Survived will be our response variable.  
+It is a categorical binary (0 or 1) and has no NAs.  
+From the data set information: 0 = No, 1 = Yes.  
+We have a mean of 0.3838 which means that on average 38% of people survived.
+
+## Pclass
+
+```{r}
+print("Pclass")
+head(titanic$Pclass)
+paste("Type:", class(titanic$Pclass))
+paste("Distincts:", n_distinct(titanic$Pclass))
+paste("NAs:", sum(is.na(titanic$Pclass) == TRUE))
+table(titanic$Pclass)
+summary(titanic$Pclass)
+```
+
+Pclass is the ticket class.  
+It is a categorical variable with 3 options: 1, 2, 3.  
+We can see that most people were in 3rd class, then 1st and 2nd class were roughly as popular, with 1st class being slighlty more.  
+This should be a useful variable for the regression.
+
+## Name
+
+```{r}
+print("Name")
+head(titanic$Name)
+paste("Type:", class(titanic$Name))
+paste("Distincts:", n_distinct(titanic$Name))
+paste("NAs:", sum(is.na(titanic$Name) == TRUE))
+# table(titanic$Name)
+summary(titanic$Name)
+```
+
+Name of the passengers.  
+891 distinct values, no NAs.  
+Won't be useful for the regression except if we do some kind of feature extraction on it.  
+
+## Sex
+
+```{r}
+print("Sex")
+head(titanic$Sex)
+paste("Type:", class(titanic$Sex))
+paste("Distincts:", n_distinct(titanic$Sex))
+paste("NAs:", sum(is.na(titanic$Sex) == TRUE))
+table(titanic$Sex)
+summary(titanic$Sex)
+```
+
+Sex of the passengers.  
+2 distinct values, no NAs.  
+More males than females.  
+Should be converted to a binary categorical variable.  
+Will probably be very useful to the regression.  
+
+## Age
+
+```{r}
+print("Age")
+head(titanic$Age)
+paste("Type:", class(titanic$Age))
+paste("Distincts:", n_distinct(titanic$Age))
+paste("NAs:", sum(is.na(titanic$Age) == TRUE))
+# table(titanic$Age)
+summary(titanic$Age)
+```
+
+Age of the passengers.  
+89 distinct values, lots of NAs.  
+Will need to do something about the missing values.  
+Will probably be very useful to the regression.  
+
+## SibSp
+
+```{r}
+print("SibSp")
+head(titanic$SibSp)
+paste("Type:", class(titanic$SibSp))
+paste("Distincts:", n_distinct(titanic$SibSp))
+paste("NAs:", sum(is.na(titanic$SibSp) == TRUE))
+table(titanic$SibSp)
+summary(titanic$SibSp)
+```
+
+Number of siblings / spouses aboard the Titanic.  
+7 distinct values, no NAs.  
+Will probably be somewhat useful to the regression.  
+
+## Parch
+
+```{r}
+print("Parch")
+head(titanic$Parch)
+paste("Type:", class(titanic$Parch))
+paste("Distincts:", n_distinct(titanic$Parch))
+paste("NAs:", sum(is.na(titanic$Parch) == TRUE))
+table(titanic$Parch)
+summary(titanic$Parch)
+```
+
+Number of parents / children aboard the Titanic.  
+7 distinct values, no NAs.  
+Will probably be very useful to the regression.  
+
+## Ticket
+
+```{r}
+print("Ticket")
+head(titanic$Ticket)
+paste("Type:", class(titanic$Ticket))
+paste("Distincts:", n_distinct(titanic$Ticket))
+paste("NAs:", sum(is.na(titanic$Ticket) == TRUE))
+# table(titanic$Ticket)
+summary(titanic$Ticket)
+```
+
+Ticket number.  
+681 distinct values, no NAs.  
+Won't be useful for the regression unless we do some kind of feature extraction on it.  
+
+## Fare
+
+```{r}
+print("Fare")
+head(titanic$Fare)
+paste("Type:", class(titanic$Fare))
+paste("Distincts:", n_distinct(titanic$Fare))
+paste("NAs:", sum(is.na(titanic$Fare) == TRUE))
+# table(titanic$Fare)
+summary(titanic$Fare)
+```
+
+Passenger fare.  
+248 distinct values, no NAs.  
+Could be useful for the regression but certainly highly correlated to Pclass.  
+
+## Cabin
+
+```{r}
+print("Cabin")
+head(titanic$Cabin)
+paste("Type:", class(titanic$Cabin))
+paste("Distincts:", n_distinct(titanic$Cabin))
+paste("NAs:", sum(is.na(titanic$Cabin) == TRUE))
+# table(titanic$Cabin)
+summary(titanic$Cabin)
+```
+
+Cabin number.  
+148 distinct values, lots of NAs.  
+Probably won't be useful for the regression unless we do some kind of feature extraction on it.  
+
+## Embarked
+
+```{r}
+print("Embarked")
+head(titanic$Embarked)
+paste("Type:", class(titanic$Embarked))
+paste("Distincts:", n_distinct(titanic$Embarked))
+paste("NAs:", sum(is.na(titanic$Embarked) == TRUE))
+table(titanic$Embarked)
+summary(titanic$Embarked)
+```
+
+Port of Embarkation.  
+C = Cherbourg, Q = Queenstown, S = Southampton.
+4 distinct values, 0 NAs, 2 blank values.  
+Could be useful for the regression.  
+
+# Cleaning up the data
+
+## Survived
+
+Converting to factor.
+
+```{r}
+titanic$Survived = factor(titanic$Survived)
+```
+
+## Pclass
+
+Converting to factor.
+
+```{r}
+titanic$Pclass = factor(titanic$Pclass)
+```
+
+## Name
+
+We drop this column as of now because each row has a different string value.
+
+```{r}
+titanic = subset(titanic, select = -c(Name))
+```
+
+## Sex
+
+Converting to factor.
+
+```{r}
+titanic$Sex = factor(titanic$Sex, labels = c("F", "M"))
+```
+
+## Age
+
+Dropping rows with missing values as we already have too much rows.
+
+```{r}
+titanic = titanic[complete.cases(titanic[, c("Age")]), ]
+```
+
+Looking at the distribution:
+
+```{r fig.align="center", fig.width = 8, fig.height = 4}
+ggplot(titanic,
+       aes(x = Age)) +
+    geom_histogram(binwidth = 2.5, fill = "blue", color = "blue", alpha = .5) +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+    theme_bw() +
+    ggtitle("Age distribution") +
+    xlab("Age") +
+    ylab("Count")
+```
+
+It is skewed to the right and there might be outliers.
+
+```{r fig.align="center", fig.width = 2, fig.height = 4}
+ggplot(titanic) +
+  aes(x = "", y = Age) +
+  geom_boxplot() +
+  theme_bw()
+```
+
+Removing outliers:
+
+```{r}
+quartiles = quantile(titanic$Age, probs = c(.25, .75), na.rm = FALSE)
+upper = quartiles[2] + 1.5 * IQR(titanic$Age)
+titanic = subset(titanic, titanic$Age <= upper)
+```
+
+```{r fig.align="center", fig.width = 8, fig.height = 4}
+ggplot(titanic,
+       aes(x = Age)) +
+    geom_histogram(binwidth = 2.5, fill = "blue", color = "blue", alpha = .5) +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+    theme_bw() +
+    ggtitle("Age distribution") +
+    xlab("Age") +
+    ylab("Count")
+```
+
+```{r fig.align="center", fig.width = 2, fig.height = 4}
+ggplot(titanic) +
+  aes(x = "", y = Age) +
+  geom_boxplot() +
+  theme_bw()
+```
+
+## SibSp
+
+Converting to factors:
+
+```{r}
+titanic$SibSp = factor(titanic$SibSp)
+```
+
+## Parch
+
+Converting to factors:
+
+```{r}
+titanic$Parch = factor(titanic$Parch)
+```
+
+## Ticket
+
+We drop this column as of now.
+
+```{r}
+titanic = subset(titanic, select = -c(Ticket))
+```
+
+## Fare
+
+Might be highly correlated to Pclass, we will run tests after this part to decide what we do with it.
+
+Looking at the distribution:
+
+```{r fig.align="center", fig.width = 8, fig.height = 4}
+ggplot(titanic,
+       aes(x = Fare)) +
+    geom_histogram(binwidth = 2.5, fill = "blue", color = "blue", alpha = .5) +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+    theme_bw() +
+    ggtitle("Fare distribution") +
+    xlab("Fare") +
+    ylab("Count")
+```
+
+It is heavily skewed to the right and there are a lot of outliers.
+
+```{r fig.align="center", fig.width = 2, fig.height = 4}
+ggplot(titanic) +
+  aes(x = "", y = Fare) +
+  geom_boxplot() +
+  theme_bw()
+```
+
+Log transform:
+
+```{r}
+titanic$Fare = log(titanic$Fare + 1)
+```
+
+```{r fig.align="center", fig.width = 8, fig.height = 4}
+ggplot(titanic,
+       aes(x = Fare)) +
+    geom_histogram(binwidth = 0.25, fill = "blue", color = "blue", alpha = .5) +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+    theme_bw() +
+    ggtitle("Fare distribution") +
+    xlab("log(Fare)") +
+    ylab("Count")
+```
+
+```{r fig.align="center", fig.width = 2, fig.height = 4}
+ggplot(titanic) +
+  aes(x = "", y = Fare) +
+  geom_boxplot() +
+  theme_bw() +
+  ylab("log(Fare)")
+```
+
+Removing outliers:
+
+```{r}
+quartiles = quantile(titanic$Fare, probs = c(.25, .75), na.rm = FALSE)
+iqr = IQR(titanic$Fare)
+lower = quartiles[1] - 1.5 * iqr
+upper = quartiles[2] + 1.5 * iqr
+titanic = subset(titanic, titanic$Fare >= lower & titanic$Fare <= upper)
+```
+
+```{r fig.align="center", fig.width = 8, fig.height = 4}
+ggplot(titanic,
+       aes(x = Fare)) +
+    geom_histogram(binwidth = 0.25, fill = "blue", color = "blue", alpha = .5) +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+    theme_bw() +
+    ggtitle("Fare distribution") +
+    xlab("log(Fare)") +
+    ylab("Count")
+```
+
+```{r fig.align="center", fig.width = 2, fig.height = 4}
+ggplot(titanic) +
+  aes(x = "", y = Fare) +
+  geom_boxplot() +
+  theme_bw() +
+  ylab("log(Fare)")
+```
+
+
+## Cabin
+
+We drop this column as of now.
+
+```{r}
+titanic = subset(titanic, select = -c(Cabin))
+```
+
+## Embarked
+
+Dropping rows with blank values and converting to factor.
+
+```{r}
+titanic$Embarked[titanic$Embarked == ""] = NA
+titanic = titanic[complete.cases(titanic[, c('Embarked')]), ]
+titanic$Embarked = factor(titanic$Embarked)
+```
+
+# Cleaned data set
+
+```{r}
+head(titanic)
+summary(titanic)
+n = nrow(titanic)
+nrow(titanic)
+```
+
+We still have too many rows to comply with the instructions' limit of 500. Let's delete some randomly:
+
+```{r}
+titanic = titanic[-sample(1:nrow(titanic), n - 500), ]
+summary(titanic)
+nrow(titanic)
+```
+
+# Building the model
+
+```{r}
+mdl = glm(
+  Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked,
+  family = binomial,
+  data = titanic
+)
+```
+
+# Checking logistic regression assumptions
+
+## Dependent variable is binary
+
+```{r}
+table(titanic$Survived)
+```
+ 
+TRUE
+ 
+## Observations are independent of one another
+
+This is hard to say as we don't have a way of testing it.  
+We assume that it is true.
+
+## Little or no multicollinearity among the independent variables
+
+```{r}
+ggpairs(subset(titanic, select = -c(PassengerId)))
+```
+
+Looks OK.
+
+## Independent variables are linearly associated with the log odds of the outcome
+
+```{r}
+# We run it on continuous predictors only
+continuous_predictors = subset(titanic, select = c(Age, Fare))
+predictors_names = colnames(continuous_predictors)
+
+probabilities = predict(mdl, type = "response")
+
+continuous_predictors = continuous_predictors %>%
+  mutate(logit = log(probabilities / (1 - probabilities))) %>%
+  gather(key = "predictors", value = "predictor.value",-logit)
+```
+
+```{r}
+ggplot(continuous_predictors, aes(logit, predictor.value))+
+  geom_point(size = 0.5, alpha = 0.5) +
+  geom_smooth(method = "loess") + 
+  theme_bw() + 
+  facet_wrap(~predictors, scales = "free_y")
+```
+
+Not at all, maybe we should remove these variables from the model.
+
+```{r}
+mdl = glm(
+  Survived ~ Pclass + Sex + SibSp + Parch + Embarked,
+  family = binomial,
+  data = titanic
+)
+```
+
+## Enough samples
+
+The rule of thumb is 10 cases with the least frequent outcome for each independent variable in the model.
+We need 10 x 5 = 50 for the least frequent outcome.
+
+```{r}
+table(titanic$Survived)
+```
+
+TRUE
+
+# Evaluating the model
+
+```{r}
+wald.test(b = coef(mdl), Sigma = vcov(mdl), Terms = 2:6)
+```
+
+Reject $H_0$ since $\text{overall p-value} = 0.0 ≤ \alpha = 0.05$.  
+We have significant evidence at the $\alpha = 0.05$ level that at least one $\beta_i ≠ 0$.
+
+```{r}
+summary(mdl)
+```
+
+$\beta_{Pclass1} = 2.8127$ ($\text{p-value} = 1.16e-08 ≤ \alpha = 0.05$)  
+$\beta_{Pclass2} = -1.2984$ ($\text{p-value} = 0.000702 ≤ \alpha = 0.05$)  
+$\beta_{Pclass3} = -1.9963$ ($\text{p-value} = 1.59e-07 ≤ \alpha = 0.05$)  
+$\beta_{SexM} = -3.1176$ ($\text{p-value} = < 2e-16 ≤ \alpha = 0.05$)
+
+We are unable to say that all the other coefficients are significant.
+
+```{r fig.align="center", fig.width = 5, fig.height = 5}
+titanic$prob = predict(mdl, type = c("response"))
+plot(roc(Survived ~ prob, data = titanic),
+     print.auc = TRUE,
+     auc.polygon = TRUE)
+```
+
+The c-statistic of the model is 0.848 (value may differ slightly because of the random sampling of the data to have 500 observations).
+
+```{r}
+titanic$pred = ifelse(titanic$prob >= 0.50, 1, 0)
+
+# Confusion matrix
+table(titanic$Survived, titanic$pred)
+
+error = mean(titanic$Survived != titanic$pred)
+paste("Accuracy:", round(1 - error, 4))
+```
+
+**We get an accuracy of 79% with this model when choosing a cutoff of 0.5**  
+(value may differ slightly because of the random sampling of the data to have 500 observations)
+
+# Second model with only Pclass and Sex as predictors
+
+```{r}
+mdl_2 = glm(
+  Survived ~ Pclass + Sex,
+  family = binomial,
+  data = titanic
+)
+```
+
+```{r}
+wald.test(b = coef(mdl_2), Sigma = vcov(mdl_2), Terms = 2:3)
+```
+
+Reject $H_0$ since $\text{overall p-value} = 6.3e-10 ≤ \alpha = 0.05$.  
+We have significant evidence at the $\alpha = 0.05$ level that at least one $\beta_i ≠ 0$.
+
+```{r}
+summary(mdl_2)
+```
+
+$\beta_{Pclass1} = 2.3174$ ($\text{p-value} = 7.94e-16 ≤ \alpha = 0.05$)  
+$\beta_{Pclass2} = -1.0760$ ($\text{p-value} = 0.000599 ≤ \alpha = 0.05$)  
+$\beta_{Pclass3} = -1.8393$ ($\text{p-value} = 8.30e-11 ≤ \alpha = 0.05$)  
+$\beta_{SexM} = -2.5041$ ($\text{p-value} = < 2e-16 ≤ \alpha = 0.05$)
+
+```{r fig.align="center", fig.width = 5, fig.height = 5}
+titanic$prob_2 = predict(mdl_2, type = c("response"))
+plot(roc(Survived ~ prob_2, data = titanic),
+     print.auc = TRUE,
+     auc.polygon = TRUE)
+```
+
+The c-statistic of the model is 0.821. (value may differ slightly because of the random sampling of the data to have 500 observations)
+
+```{r}
+titanic$pred_2 = ifelse(titanic$prob_2 >= 0.50, 1, 0)
+
+# Confusion matrix
+table(titanic$Survived, titanic$pred_2)
+
+error = mean(titanic$Survived != titanic$pred_2)
+paste("Accuracy:", round(1 - error, 4))
+```
+
+**We get an accuracy of 78.6% using only Pclass and Sex as predictors when choosing a cutoff of 0.5**  
+(value may differ slightly because of the random sampling of the data to have 500 observations)
+
+# Exporting the final dataset
+
+```{r}
+write.csv(subset(titanic, select = c(Pclass, Sex, SibSp, Parch, Embarked, Survived)), "project_benoit_clemenceau.csv", row.names = TRUE)
+```
+
+
